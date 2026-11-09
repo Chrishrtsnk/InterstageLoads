@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+message: "If you use this script, please cite it as below."
+title: "Load derivation script for a metallic lattice-truss hot-staging interstage"
+authors:
+  - family-names: Hartsink
+    given-names: Christopher
+version: 1.0.0
+date-released: 2026-11-09
+license: MIT
+repository-code: "https://github.com/Chrishrtsnk/interstage-loads"
