@@ -1,8 +1,9 @@
 """
 interstage_loads.py  --  Load and boundary-condition derivation for the
-hot-staging lattice-truss interstage (Section 3 and Appendix B).
+hot-staging lattice-truss interstage (Section 3 and Appendix A.2 of the paper;
+the script itself is described in Appendix B).
 
-Requirements (versions used): Python 3.11, numpy 2.x, scipy 1.x,
+Requirements (versions used): Python 3.13, numpy 2.5.3, scipy 1.18.1,
 ambiance 1.3.1 (standard atmosphere),
 rocketcea 1.2.3 (Python wrapper of CEA2, the second version of the NASA Chemical
 Equilibrium with Applications (CEA) Fortran code), cantera 3.2.0 (validation only).
@@ -34,6 +35,9 @@ R = 4.5               # interstage outer radius (m), Section 2
 S = np.pi * R**2      # reference area (m^2)
 R_m = 4.45            # radius of the ring wall midline, on which the members are centred (m)
 
+# Output labels give the section of the paper first and the appendix with the
+# derivation second, e.g. [3.2 | A.2.2].
+
 # --------------------------------------------------------------------------
 # Vehicle data (Section 2, Table 2.1)
 # --------------------------------------------------------------------------
@@ -43,15 +47,15 @@ T = 8240 * 1e3 * g0                 # Super Heavy thrust, 8,240 tf -> N
 print(f"Thrust T = {T/1e6:.2f} MN")
 
 # --------------------------------------------------------------------------
-# 3.2  Axial compression
+# 3.2 | A.2.2  Axial compression
 # --------------------------------------------------------------------------
-rho_10 = 0.41271     # USSA, H = 10 km (kg/m^3)
-T_10 = 223.15        # USSA, H = 10 km (K)
+rho_10 = 0.41271     # USSA, geopotential altitude H = 10 km (kg/m^3)
+T_10 = 223.15        # USSA, geopotential altitude H = 10 km (K)
 V_mq = 416.0         # max-q velocity (m/s)
 q_mq = 0.5 * rho_10 * V_mq**2
 CD = 0.125
 D = q_mq * S * CD
-print(f"\n[3.2] q_maxq = {q_mq/1e3:.2f} kPa, D = {D/1e6:.3f} MN, D/T = {100*D/T:.2f} %")
+print(f"\n[3.2 | A.2.2] q_maxq = {q_mq/1e3:.2f} kPa, D = {D/1e6:.3f} MN, D/T = {100*D/T:.2f} %")
 
 def axial(case, drag=0.0, D_up=0.0):
     W = m_tot[case] * g
@@ -82,7 +86,7 @@ Re_crit = 51 * (Rs / L_veh) ** -1.039
 print(f"  mu_10 = {mu_10:.4e} Pa s, Re = {Re:.3e}, Re_crit = {Re_crit:.3e}, Re/Re_crit = {Re/Re_crit:.1f}")
 
 # --------------------------------------------------------------------------
-# 3.3  Shear and bending
+# 3.2 | A.2.3  Shear and bending
 # --------------------------------------------------------------------------
 V_wind = 50.0
 alpha = V_wind / V_mq
@@ -116,7 +120,7 @@ V_qs = F_aero - F_in
 M_qs = F_aero * h_cp - F_in * h_cg
 DAF = 2.0
 V_mq_d, M_mq_d = DAF * V_qs, DAF * M_qs
-print(f"\n[3.3] alpha = {alpha:.4f} rad ({np.degrees(alpha):.2f} deg), C_Na(Allen-Perkins) = {CNa_AP:.3f} /rad")
+print(f"\n[3.2 | A.2.3] alpha = {alpha:.4f} rad ({np.degrees(alpha):.2f} deg), C_Na(Allen-Perkins) = {CNa_AP:.3f} /rad")
 print(f"  potential share = {w_pot:.3f}, h_pot = {h_pot:.2f} m, h_cp = {h_cp:.2f} m "
       f"(L_n 10 m: {h_cp_of(10.0)[1]:.2f} m, L_n 14 m: {h_cp_of(14.0)[1]:.2f} m)")
 print(f"  F_boost = {F_boost/1e6:.3f} MN, total lateral force = {(k_trim*F_aero+F_boost)/1e6:.3f} MN")
@@ -140,24 +144,26 @@ print(f"  max-q:    q_max = {qmq/1e6:.4f} MN/m, n_M = {nMmq/1e6:.4f} MN/m")
 print(f"  pre-MECO: q_max = {qpm/1e6:.4f} MN/m, n_M = {nMpm/1e6:.4f} MN/m")
 
 # --------------------------------------------------------------------------
-# 3.4  Pre-staging thermal state
+# 3.3 | A.2.4  Pre-staging thermal state
 # --------------------------------------------------------------------------
 M_mq = V_mq / np.sqrt(1.4 * 8314.32 / 28.9644 * T_10)      # USSA Eq. (50)
 r = 0.89
 Tr_air = T_10 * (1 + r * 0.2 * M_mq**2)
-print(f"\n[3.4] M_maxq = {M_mq:.3f}, T_r(air, max-q) = {Tr_air:.1f} K")
+print(f"\n[3.3 | A.2.4] M_maxq = {M_mq:.3f}, T_r(air, max-q) = {Tr_air:.1f} K")
 
 # Ascent heating from max-q to separation (flight 13 webcast telemetry, booster)
 from ambiance import Atmosphere                    # standard atmosphere (checked below)
 a10, a55 = Atmosphere(10e3), Atmosphere(55e3)      # USSA Table I, geometric altitude
-print(f"  ambiance check: rho(10 km) = {a10.density[0]:.5f} (USSA 0.41351), "
+# (0.41351 kg/m^3 at 10 km geometric altitude; the loads use the value at 10 km
+#  geopotential altitude, 0.41271 kg/m^3, a difference of 0.2 %)
+print(f"  ambiance check: rho(10 km) = {a10.density[0]:.5f} (USSA 0.41351, geometric), "
       f"rho(55 km) = {a55.density[0]:.2e} (USSA 5.7e-4), p(55 km) = {a55.pressure[0]:.1f} Pa (USSA 42.5)")
 t_tl = np.array([58.0, 75.0, 90.0, 105.0, 120.0, 138.0, 141.0])          # s after liftoff
 z_tl = np.array([10.0, 14.3, 20.7, 29.1, 39.6, 53.0, 55.0]) * 1e3        # m
 v_tl = np.array([1500, 1960, 2783, 3800, 4943, 5900, 5900]) / 3.6        # m/s
 gam_a, R_a = 1.4, 8314.32 / 28.9644                # USSA Eq. (50): gamma = 1.40
 cp_a = gam_a * R_a / (gam_a - 1)
-x_tube = np.pi * 0.100                             # running length, as in Section 3.5
+x_tube = np.pi * 0.100                             # running length, as in Appendix A.2.5
 rho_ti, c_ti, k_ti = 4420.0, 580.0, 6.6            # Ti-6Al-4V at 20 C (TIMET datasheet)
 
 def ascent_h(tt, Tw):
@@ -213,7 +219,7 @@ print(f"    ring 100 mm: surface {T_ring[0]:.1f} K, at 10 mm depth {T_ring[10]:.
       f"mean {T_ring.mean():.1f} K")
 
 # --------------------------------------------------------------------------
-# 3.5  Plume impingement chain
+# 3.3 | A.2.5  Plume impingement chain
 # --------------------------------------------------------------------------
 cea = CEA_Obj(oxName="LOX", fuelName="CH4", pressure_units="bar",
               temperature_units="K", cstar_units="m/s",
@@ -221,7 +227,7 @@ cea = CEA_Obj(oxName="LOX", fuelName="CH4", pressure_units="bar",
               enthalpy_units="J/kg", density_units="kg/m^3",
               viscosity_units="millipoise")
 Pc, MR = 350.0, 3.6
-print("\n[3.5] CEA (RocketCEA) exit states")
+print("\n[3.3 | A.2.5] CEA (RocketCEA) exit states")
 ex = {}
 for name, eps in (("Raptor", 34.34), ("RVac", 80.0), ("eps945", 945.0)):
     Tc, Tt, Te = cea.get_Temperatures(Pc=Pc, MR=MR, eps=eps)
@@ -263,7 +269,7 @@ _, mu_s_mP, _, Pr_s = cea.get_Chamber_Transport(Pc=po2, MR=MR, frozen=0)
 mu_s = mu_s_mP * 1e-4                                   # millipoise -> Pa s
 rho_s = cea.get_Chamber_Density(Pc=po2, MR=MR)
 H0 = cea.get_Chamber_H(Pc=po2, MR=MR)                # J/kg
-# wall state: CEA tp equilibrium at (300 K, p_o2) -- CEARUN run "TPprops" (Appendix A.3)
+# wall state: CEA tp equilibrium at (300 K, p_o2) -- CEARUN run "TPprops" (Appendix A.2.7)
 rho_w, mu_w, h_w = 1.1675, 0.15048e-4, -12028.5e3
 Tw, Rn = 300.0, 0.100
 dudx = (1 / Rn) * np.sqrt(2 * (po2 - p1) * 1e5 / rho_s)
@@ -275,7 +281,7 @@ print(f"  du/dx = {dudx:.0f} 1/s, q_s = {q_s/1e6:.3f} MW/m2, h_s = {h_s:.0f} W/m
 
 # Tangential surfaces: Eckert reference temperature + turbulent flat plate
 Tstar = T1 + 0.5 * (Tw - T1) + 0.22 * (Tr - T1)
-# CEA tp equilibrium at (T*, p1) -- CEARUN run "TPprops" (Appendix A.3)
+# CEA tp equilibrium at (T*, p1) -- CEARUN run "TPprops" (Appendix A.2.7)
 rho_st, mu_st, cp_st, Pr_st = 2.6337e-2, 0.52230e-4, 1958.4, 0.7437
 R_gas = 8314.46 / ex["eps945"]["MW"]
 u1 = M1 * np.sqrt(gam * R_gas * T1)
@@ -295,10 +301,10 @@ print(f"  q_blend = {q_blend:.0f} W/m2 -> h_blend = {h_blend:.0f} W/m2K; adopted
       f"(q_FE(300 K) = {h_FE*(T_ref_FE-Tw):.0f} W/m2, +{100*(h_FE/h_blend-1):.1f} %)")
 
 # --------------------------------------------------------------------------
-# 3.6  Limit and ultimate line loads
+# 3.4  Limit and ultimate line loads
 # --------------------------------------------------------------------------
 FS_u, FS_y = 1.4, 1.25
-print("\n[3.6] line loads (MN/m): limit / yield (x1.25) / ultimate (x1.4)")
+print("\n[3.4] line loads (MN/m): limit / yield (x1.25) / ultimate (x1.4)")
 for nm, nN, nM, qv in (("max-q", ax["maxq"][2], nMmq, qmq), ("pre-MECO", ax["premeco"][2], nMpm, qpm)):
     peak = nN + nM
     print(f"  {nm:8s} n_N={nN/1e6:.3f} n_M={nM/1e6:.3f} q={qv/1e6:.4f} peak={peak/1e6:.3f} | "
@@ -309,10 +315,10 @@ for nm, (Nr, Vr, Mr) in (("max-q", (ax["maxq"][1], V_mq_d, M_mq_d)), ("pre-MECO"
         print(f"  {nm:8s} {lab} = {val/1e6:.3f} / {FS_y*val/1e6:.3f} / {FS_u*val/1e6:.3f} {u}")
 
 # --------------------------------------------------------------------------
-# 3.7  Validation and sensitivity
+# A.2.6  Validation and sensitivity
 # --------------------------------------------------------------------------
-print("\n[3.7] validation")
-# energy check at the RVac exit with the CEARUN enthalpies (Appendix A.1, Table A.1)
+print("\n[A.2.6] validation")
+# energy check at the RVac exit with the CEARUN enthalpies (Appendix A.2.7, Table A.2.4)
 H_c_run, H_e_run, Ve_run = -1526.63e3, -8018.22e3, 3603.2
 print(f"  V_e from enthalpy = {np.sqrt(2*(H_c_run-H_e_run)):.1f} m/s vs CEA exit velocity {Ve_run} m/s (CEARUN, eps = 80)")
 e_p1 = cea.get_eps_at_PcOvPe(Pc=Pc, MR=MR, PcOvPe=Pc / p1)
@@ -367,3 +373,29 @@ for fs in (0.05, 0.20):
     print(f"  f_s = {fs:.2f}: h_blend = {hb:.0f} W/m2K")
 print(f"  2-D stagnation line (k=0): h_blend = "
       f"{(f_s*h_s/np.sqrt(2)*(T0-Tw)+(1-f_s)*h_t*(Tr-Tw))/(T_ref_FE-Tw):.0f} W/m2K")
+
+# Telemetry check of the pre-MECO load factor (Appendix A.2.6): booster speed and
+# altitude read every 2 s from the webcast of the thirteenth flight test, from
+# T+1:40 to MECO at T+2:20. The axial load factor follows from
+#   n_x = (dV/dt + g(h) sin(gamma)) / g0,  sin(gamma) = (dh/dt) / V,
+# evaluated where the booster still runs at full thrust (up to T+2:06; the speed
+# gain per 2 s drops from T+2:08 onward as the engines shut down).
+t_w = np.arange(100.0, 141.0, 2.0)                                       # s
+V_w = np.array([3448, 3586, 3715, 3868, 4007, 4153, 4291, 4441, 4576, 4722, 4869,
+                5026, 5174, 5311, 5455, 5578, 5667, 5727, 5803, 5882, 5953]) / 3.6   # m/s
+h_w = np.array([26.1, 27.3, 28.5, 29.7, 30.9, 32.2, 33.5, 34.9, 36.1, 37.5, 38.9,
+                40.6, 41.9, 43.3, 44.7, 46.2, 47.9, 49.2, 50.7, 52.4, 53.0]) * 1e3  # m
+R_E = 6371e3
+def nx_tel(tt, VV, hh):
+    gl = g0 * (R_E / (R_E + hh))**2
+    return (np.gradient(VV, tt) + gl * np.gradient(hh, tt) / VV) / g0
+full = t_w <= 126.0
+nx_pts = nx_tel(t_w, V_w, h_w)[full]
+pV, ph = np.polyfit(t_w[full], V_w[full], 2), np.polyfit(t_w[full], h_w[full], 2)
+tf = t_w[full]
+nx_fit = nx_tel(tf, np.polyval(pV, tf), np.polyval(ph, tf))
+nx_lo, nx_hi = nx_pts.min(), nx_pts.max()
+print(f"\n  telemetry (flight 13, T+1:40 to T+2:06): n_x per 2 s step {nx_lo:.2f} to {nx_hi:.2f}, "
+      f"quadratic fit {nx_fit.min():.2f} to {nx_fit.max():.2f}")
+print(f"  pre-MECO n_x used = {ax['premeco'][0]:.2f}, {100*(ax['premeco'][0]/nx_fit.mean()-1):.0f} % above the fitted mean "
+      f"{nx_fit.mean():.2f}")
