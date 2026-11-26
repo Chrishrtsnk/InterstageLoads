@@ -4,7 +4,7 @@ title: "Load derivation script for a metallic lattice-truss hot-staging intersta
 authors:
   - family-names: Hartsink
     given-names: Christopher
-version: 1.1.0
+version: 1.1.1
 date-released: 2026-11-26
 license: MIT
 repository-code: "https://github.com/Chrishrtsnk/InterstageLoads"
