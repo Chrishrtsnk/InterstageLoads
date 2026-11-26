@@ -1,0 +1,11 @@
+prob case=TPprops tp
+  p,bar= 0.10525, 3.2114
+  t,k= 300, 1182.3
+  o/f = 3.6
+reac
+  fuel CH4(L) wt%=100.0000
+  oxid O2(L) wt%=100.0000
+output short
+output siunits
+output transport
+end

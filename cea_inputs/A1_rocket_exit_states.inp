@@ -1,0 +1,10 @@
+prob case=RVac ro equilibrium frozen nfz=2
+  p,bar= 350
+  supar= 34.34, 80, 945
+  o/f = 3.6
+reac
+  fuel CH4(L) wt%=100.0000
+  oxid O2(L) wt%=100.0000
+output siunits
+output transport
+end

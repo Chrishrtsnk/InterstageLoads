@@ -1,0 +1,10 @@
+prob case=T0stag hp
+  p,bar= 3.2114
+  o/f = 3.6
+reac
+  fuel CH4(L) wt%=100.0000
+  oxid O2(L) wt%=100.0000
+output short
+output siunits
+output transport
+end
